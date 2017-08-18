@@ -1,31 +1,34 @@
 defmodule Copper.Modules do
 
   def create_a_copy(module, newname) do
-    # try do...
-    # handle errors
-    get_binary(module)
-    |> get_chunks
-    |> rename_module(newname)
-    |> compile_and_load
+    with {:ok, binary} <- get_binary(module) do
+      binary
+      |> get_chunks
+      |> rename_module(newname)
+      |> compile_and_load
+    else
+      {:error, error} ->
+        {:error, error}
+    end
   end
 
   def get_binary(module) do
     case :code.get_object_code(module) do
-      {_, binary, _} -> binary
-      # :error -> error, are you trying to mock a mock?
+      {_, binary, _} -> {:ok, binary}
+      :error -> {:error, "could not load object code for #{module}, are you trying to mock a mock?"}
     end
   end
 
   def get_chunks(binary) do
       case :beam_lib.chunks(binary, [:abstract_code]) do
-	  {:ok, {_, [{:abstract_code, {:raw_abstract_v1, forms}}]}} -> forms
+	{:ok, {_, [{:abstract_code, {:raw_abstract_v1, forms}}]}} -> forms
       end
   end
 
   def compile_and_load(chunks) do
     case :compile.forms(chunks, [:return_errors]) do
       {:ok, modname, binary} ->
-        :code.load_binary(modname, [], binary);
+        :code.load_binary(modname, [], binary)
       {:ok, modname, binary, _Warnings} ->
         :code.load_binary(modname, [], binary)
     end
