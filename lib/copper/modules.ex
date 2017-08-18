@@ -1,6 +1,8 @@
 defmodule Copper.Modules do
 
   def create_a_copy(module, newname) do
+    # try do...
+    # handle errors
     get_binary(module)
     |> get_chunks
     |> rename_module(newname)

@@ -1,3 +1,6 @@
+# todo verify
+# todo restore old module
+
 defmodule Copper do
   import Copper.Operators
 
@@ -20,7 +23,6 @@ defmodule Copper do
             backup_name = Module.concat(Backup, name)
 
             # backup original
-            # todo: extract this to a function
             Copper.Modules.create_a_copy(name, backup_name)
 
             {:ok, %{double | partial: {backup_name, partial_funcs}}}
@@ -37,11 +39,11 @@ defmodule Copper do
   end
 
   def build(%{name: name, funcs: funcs, partial: partial, options: options}) do
-
-    # create the mock (router)
     with {:ok, pid} <- create_mock_process(name) do
       built_functions = Enum.map(funcs, &gen_function/1)
       router_functions = Enum.map(funcs, &gen_router_function(pid, &1))
+      # todo partial functions should also be spied upon
+      # so create router functions for them
       partial_functions = case partial do
                             false ->
                               []

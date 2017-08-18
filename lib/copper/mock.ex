@@ -1,8 +1,6 @@
 defmodule Copper.Mock do
   use GenServer
 
-  # todo register name
-
   def start_link(mocking_module) do
     GenServer.start_link(__MODULE__, %{mocking: mocking_module, calls: %{}}, name: :"#{mocking_module}_proc")
   end
