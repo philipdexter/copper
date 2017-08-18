@@ -16,14 +16,14 @@ defmodule Copper do
           {:error, _} ->
             {:error, "module #{name} is not loaded"}
           {:module, _} ->
-            existing_funcs = name.__info__(:functions)
+            partial_funcs = name.__info__(:functions)
             backup_name = Module.concat(Backup, name)
 
             # backup original
             # todo: extract this to a function
             Copper.Modules.create_a_copy(name, backup_name)
 
-            {:ok, %{double | partial: {backup_name, existing_funcs}}}
+            {:ok, %{double | partial: {backup_name, partial_funcs}}}
         end
     end
   end
@@ -39,16 +39,34 @@ defmodule Copper do
   def build(%{name: name, funcs: funcs, partial: partial, options: options}) do
 
     # create the mock (router)
-    {:ok, pid} = Copper.Mock.start_link(name)
-    IO.inspect pid
+    with {:ok, pid} <- create_mock_process(name) do
+      built_functions = Enum.map(funcs, &gen_function/1)
+      router_functions = Enum.map(funcs, &gen_router_function(pid, &1))
+      partial_functions = case partial do
+                            false ->
+                              []
+                            {backup_name, partial_funcs} ->
+                              Enum.map(partial_funcs, &gen_partial_function(backup_name, &1))
+                          end
 
-    built_functions = Enum.map(funcs, &gen_function/1)
-    router_functions = Enum.map(funcs, &gen_router_function(pid, &1))
+      all_functions = built_functions ++ router_functions ++ partial_functions
 
-    all_functions = built_functions ++ router_functions
+      code = module_from_functions(name, all_functions)
+      Code.compile_quoted(code)
 
-    code = module_from_functions(name, all_functions)
-    Code.compile_quoted(code)
+      {name, pid}
+    else
+      {:error, error} -> {:error, error}
+    end
+  end
+
+  defp create_mock_process(name) do
+    case Process.whereis(:"#{name}_proc") do
+      nil ->
+        Copper.Mock.start_link(name)
+      _pid ->
+        {:error, "mock process exists, already mocked?"}
+    end
   end
 
   defp module_from_functions(name, built_functions) do
@@ -77,6 +95,12 @@ defmodule Copper do
       def unquote(func)(unquote_splicing(args)) do
         GenServer.call(unquote(pid), {:call, unquote(func), unquote(args)})
       end
+    end
+  end
+
+  def gen_partial_function(backup_name, {func, arg_count}) do
+    quote do
+      defdelegate unquote(func)(unquote_splicing(Macro.generate_arguments(arg_count, nil))), to: unquote(backup_name)
     end
   end
 
