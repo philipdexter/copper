@@ -16,6 +16,20 @@ defmodule Copper.Mock do
     updated_calls = Map.update(calls, func, [args], fn tl -> [args|tl] end)
     {:reply, res, %{state | calls: updated_calls}}
   end
+  def handle_call(:fullstats, _from, %{calls: calls} = state) do
+    {:reply, calls, state}
+  end
+  def handle_call({:fullstats, func}, _from, %{calls: calls} = state) do
+    func_calls = Map.get(calls, func, [])
+    {:reply, func_calls, state}
+  end
+  def handle_call({:callcount, func}, _from, %{calls: calls} = state) do
+    call_count =
+      calls
+      |> Map.get(func, [])
+      |> length
+    {:reply, call_count, state}
+  end
 
   def handle_cast(:stop, state) do
     {:stop, :normal, state}
