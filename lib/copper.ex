@@ -1,13 +1,31 @@
 defmodule Copper do
+  import Copper.Operators
+
   def double(name \\ Test, options \\ []) do
-    original_funcs = case Code.ensure_loaded(name) do
-                       {:error, _} -> []
-                       {:module, _} -> name.__info__(:functions)
-                     end
-    if Keyword.get(options, :partial, false) do
-      Copper.Modules.create_a_copy(name, Module.concat(Backup, name))
+    %{name: name, funcs: [], options: options, partial: false}
+    |> handle_partiality
+    |> give
+  end
+
+  def handle_partiality(%{name: name, options: options} = double) do
+    case Keyword.get(options, :partial, false) do
+      false ->
+        {:ok, double}
+      true ->
+        case Code.ensure_loaded(name) do
+          {:error, _} ->
+            {:error, "module #{name} is not loaded"}
+          {:module, _} ->
+            existing_funcs = name.__info__(:functions)
+            backup_name = Module.concat(Backup, name)
+
+            # backup original
+            # todo: extract this to a function
+            Copper.Modules.create_a_copy(name, backup_name)
+
+            {:ok, %{double | partial: {backup_name, existing_funcs}}}
+        end
     end
-    %{name: name, funcs: [], original_funcs: original_funcs, options: options}
   end
 
   def add_handle(double, func, args, return) do
@@ -18,9 +36,18 @@ defmodule Copper do
     %{double | name: new_name}
   end
 
-  def build(%{name: name, funcs: funcs, original_funcs: original_funcs, options: options}) do
+  def build(%{name: name, funcs: funcs, partial: partial, options: options}) do
+
+    # create the mock (router)
+    {:ok, pid} = Copper.Mock.start_link(name)
+    IO.inspect pid
+
     built_functions = Enum.map(funcs, &gen_function/1)
-    code = module_from_functions(name, built_functions)
+    router_functions = Enum.map(funcs, &gen_router_function(pid, &1))
+
+    all_functions = built_functions ++ router_functions
+
+    code = module_from_functions(name, all_functions)
     Code.compile_quoted(code)
   end
 
@@ -39,8 +66,16 @@ defmodule Copper do
 
   def gen_function({func, args, return}) do
     quote do
-      def unquote(func)(unquote_splicing(args)) do
+      def unquote(:"#{func}_func")(unquote_splicing(args)) do
         unquote(return)
+      end
+    end
+  end
+
+  def gen_router_function(pid, {func, args, _return}) do
+    quote do
+      def unquote(func)(unquote_splicing(args)) do
+        GenServer.call(unquote(pid), {:call, unquote(func), unquote(args)})
       end
     end
   end
