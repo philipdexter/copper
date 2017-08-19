@@ -24,4 +24,27 @@ defmodule CopperTest do
     CM.verify(Dog.count(1))
   end
 
+  test "mocks game of life" do
+    world1 = :world1
+    world2 = :world2
+
+    {BoardReplacer, _} =
+      C.double(BoardReplacer)
+      |> CM.give(first_world(), world1)
+      |> CM.give(next_world(world), world2)
+      |> C.build
+
+    {Simulator, _} =
+      C.double(Simulator)
+      |> CM.give(one_round, fn -> BoardReplacer.next_world(BoardReplacer.first_world()) end)
+      |> C.build
+
+    assert BoardReplacer.first_world() == world1
+    assert BoardReplacer.next_world(:blah) == world2
+
+    assert Simulator.one_round() == world2
+
+    CM.verify(BoardReplacer.first_world())
+    CM.verify(BoardReplacer.next_world(world1))
+  end
 end
