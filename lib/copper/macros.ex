@@ -9,7 +9,7 @@ defmodule Copper.Macros do
 
   defmacro give(double, {func, _, args}, return) do
     quote do
-      Copper.add_handle(unquote(double), unquote(Macro.escape(func)), unquote(Macro.escape(args)), unquote(Macro.escape(return)))
+      Copper.add_handle(unquote(double), unquote(func), unquote(args), unquote(return))
     end
   end
 

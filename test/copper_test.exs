@@ -9,7 +9,7 @@ defmodule CopperTest do
       C.double(Dog)
       |> CM.give(walk, fn -> "walking!" end)
       |> CM.give(bark(), "ruff")
-      |> CM.give(count(a), a+1)
+      |> CM.give(count, fn a -> a + 1 end)
       |> C.build
 
     assert Dog.walk() == "walking!"
