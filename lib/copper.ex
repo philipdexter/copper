@@ -114,7 +114,8 @@ defmodule Copper do
         calls = GenServer.call(pid, {:callstats, func})
         case Enum.member?(calls, args) do
           true -> :ok
-          false -> {:error, "can not verify call #{module}.#{func}(#{args})"}
+          # todo stop args from showing up as an array
+          false -> {:error, "can not verify call #{module}.#{func}(#{inspect(args)})"}
         end
     end
     |> (fn :ok -> :ok
