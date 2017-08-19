@@ -18,6 +18,10 @@ defmodule CopperTest do
     assert GenServer.call(pid, {:callcount, :walk}) == 1
     assert GenServer.call(pid, {:callcount, :bark}) == 1
     assert GenServer.call(pid, {:callcount, :count}) == 1
+
+    CM.verify(Dog.walk())
+    CM.verify(Dog.bark())
+    CM.verify(Dog.count(1))
   end
 
 end

@@ -12,4 +12,10 @@ defmodule Copper.Macros do
       Copper.add_handle(unquote(double), unquote(Macro.escape(func)), unquote(Macro.escape(args)), unquote(Macro.escape(return)))
     end
   end
+
+  defmacro verify({{:., _, [{:__aliases__, _, [module]}, func]}, _, args}) do
+    quote do
+      Copper.verify(unquote(module), unquote(func), unquote(args))
+    end
+  end
 end

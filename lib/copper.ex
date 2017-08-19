@@ -106,6 +106,21 @@ defmodule Copper do
     end
   end
 
+  def verify(module, func, args) do
+    case Process.whereis(:'Elixir.#{module}_proc') do
+      nil ->
+        {:error, "error, mock process for module #{module} does not exist"}
+      pid ->
+        calls = GenServer.call(pid, {:callstats, func})
+        case Enum.member?(calls, args) do
+          true -> :ok
+          false -> {:error, "can not verify call #{module}.#{func}(#{args})"}
+        end
+    end
+    |> (fn :ok -> :ok
+           {:error, message} -> raise Copper.VerifyError, message end).()
+  end
+
   defmacro __using__(_) do
     quote do
       require Copper
