@@ -47,4 +47,18 @@ defmodule CopperTest do
     CM.verify(BoardReplacer.first_world())
     CM.verify(BoardReplacer.next_world(world1))
   end
+
+  test "multiple returns" do
+    C.double(RND)
+    |> CM.give_multiple(gen(), [1,3,2])
+    |> C.build
+
+    assert RND.gen() === 1
+    assert RND.gen() === 3
+    assert RND.gen() === 2
+    assert RND.gen() === nil
+
+    CM.verify(RND.gen())
+  end
+
 end

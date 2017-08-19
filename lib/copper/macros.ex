@@ -13,6 +13,12 @@ defmodule Copper.Macros do
     end
   end
 
+  defmacro give_multiple(double, {func, _, args}, returns) do
+    quote do
+      Copper.add_special_handle(unquote(double), unquote(func), unquote(Macro.escape(args)), unquote({:multiple, returns}))
+    end
+  end
+
   defmacro verify({{:., _, [{:__aliases__, _, [module]}, func]}, _, args}) do
     quote do
       Copper.verify(unquote(module), unquote(func), unquote(args))

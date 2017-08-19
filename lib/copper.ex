@@ -5,7 +5,7 @@ defmodule Copper do
   import Copper.Operators
 
   def double(name \\ Test, options \\ []) do
-    %{name: name, funcs: [], options: options, partial: false}
+    %{name: name, funcs: [], special_funcs: [], options: options, partial: false}
     |> handle_partiality
     |> give
   end
@@ -34,14 +34,18 @@ defmodule Copper do
     %{double | funcs: [{func, args, return}|Map.get(double, :funcs)]}
   end
 
+  def add_special_handle(double, func, args, {:multiple, returns}) do
+    %{double | special_funcs: [{func, args, {:multiple, returns}}|Map.get(double, :special_funcs)]}
+  end
+
   def rename(double, new_name) do
     %{double | name: new_name}
   end
 
-  def build(%{name: name, funcs: funcs, partial: partial, options: options}) do
-    with {:ok, pid} <- create_mock_process(name) do
-      built_functions = Enum.map(funcs, &gen_function/1)
-      router_functions = Enum.map(funcs, &gen_router_function(pid, &1))
+  def build(%{name: name, funcs: funcs, special_funcs: special_funcs, partial: partial, options: options}) do
+    with {:ok, pid} <- create_mock_process(name, special_funcs) do
+      built_functions = Enum.map(funcs++special_funcs, &gen_function/1)
+      router_functions = Enum.map(funcs++special_funcs, &gen_router_function(pid, &1))
       # todo partial functions should also be spied upon
       # so create router functions for them
       partial_functions = case partial do
@@ -62,10 +66,10 @@ defmodule Copper do
     end
   end
 
-  defp create_mock_process(name) do
+  defp create_mock_process(name, special_funcs) do
     case Process.whereis(:"#{name}_proc") do
       nil ->
-        Copper.Mock.start_link(name)
+        Copper.Mock.start_link(name, special_funcs)
       _pid ->
         {:error, "mock process exists, already mocked?"}
     end
@@ -84,6 +88,13 @@ defmodule Copper do
     }
   end
 
+  def gen_function({func, args, {:multiple, _returns}}) do
+    quote do
+      def unquote(:"#{func}_func")(unquote_splicing(args)) do
+        raise "calling multiple returning function, call the original to get correct behavior"
+      end
+    end
+  end
   def gen_function({func, args, return}) do
     quote do
       def unquote(:"#{func}_func")(unquote_splicing(args)) do

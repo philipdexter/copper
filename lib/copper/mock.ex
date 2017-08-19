@@ -1,18 +1,29 @@
 defmodule Copper.Mock do
   use GenServer
 
-  def start_link(mocking_module) do
-    GenServer.start_link(__MODULE__, %{mocking: mocking_module, calls: %{}}, name: :"#{mocking_module}_proc")
+  def start_link(mocking_module, special_funcs) do
+    GenServer.start_link(__MODULE__, %{mocking: mocking_module, calls: %{}, special_funcs: special_funcs}, name: :"#{mocking_module}_proc")
   end
 
   def stop(pid) do
     GenServer.cast(pid, :stop)
   end
 
-  def handle_call({:call, func, args}, _from, %{mocking: module, calls: calls} = state) do
-    res = apply(module, :"#{func}_func", args)
-    updated_calls = Map.update(calls, func, [args], fn tl -> [args|tl] end)
-    {:reply, res, %{state | calls: updated_calls}}
+  def handle_call({:call, func, args}, _from, %{mocking: module, calls: calls, special_funcs: special_funcs} = state) do
+    case Enum.find(special_funcs, fn {name, _, _} -> name == func end) do
+      nil ->
+        res = apply(module, :"#{func}_func", args)
+        updated_calls = Map.update(calls, func, [args], fn tl -> [args|tl] end)
+        {:reply, res, %{state | calls: updated_calls}}
+      {func, args, {:multiple, []}} ->
+        updated_calls = Map.update(calls, func, [args], fn tl -> [args|tl] end)
+        {:reply, nil, %{state | calls: updated_calls}}
+      {func, _args, {:multiple, [res|returns]}} ->
+        new_special_funcs = Enum.map(special_funcs, fn {^func, args, _} -> {func, args, {:multiple, returns}}
+                                                       otherwise        -> otherwise end)
+        updated_calls = Map.update(calls, func, [args], fn tl -> [args|tl] end)
+        {:reply, res, %{state | special_funcs: new_special_funcs, calls: updated_calls}}
+    end
   end
   def handle_call(:callstats, _from, %{calls: calls} = state) do
     {:reply, calls, state}
