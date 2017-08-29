@@ -1,9 +1,10 @@
 # todo matchers (digits, etc.)
+# todo make 'unquote' below an option
 
 defmodule Copper.Macros do
   defmacro give(double, {func, _, _}, {:fn, _, [{:->, _, [args, body]}]}) do
     quote do
-      Copper.add_handle(unquote(double), unquote(func), unquote(Macro.escape(args)), unquote(Macro.escape(body)))
+      Copper.add_handle(unquote(double), unquote(func), unquote(Macro.escape(args)), unquote(Macro.escape(body, unquote: true)))
     end
   end
 
