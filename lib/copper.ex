@@ -2,12 +2,11 @@
 # todo restore old module
 
 defmodule Copper do
-  import Copper.Operators
-
   def double(name \\ Test, options \\ []) do
     %{name: name, funcs: [], special_funcs: [], options: options, partial: false}
     |> handle_partiality
-    |> give
+    |> (fn {:ok, ok} -> ok
+           other     -> other end).()
   end
 
   def handle_partiality(%{name: name, options: options} = double) do
