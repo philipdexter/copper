@@ -1,5 +1,7 @@
-# todo verify
 # todo restore old module
+# todo make helper to create proc/func names
+# todo verify return values
+# todo how to mock gen servers....? maybe don't want to, point is to shake out pure functions
 
 defmodule Copper do
   def double(name \\ Test, options \\ []) do
